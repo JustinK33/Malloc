@@ -1,8 +1,11 @@
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations" // get rid of warnings
 #include <unistd.h>
 #include <stdint.h>
 #include <stdbool.h>
 #include <string.h>
 #include <assert.h>
+#include "malloc.h"
 
 #define MAGICAL_BYTES 0x55
 #define BLOCK_MARKER 0xDD
@@ -174,6 +177,12 @@ int *an_malloc(ssize_t size) {
 bool an_free(void *ptr) {
     my_stats *malloc_header = get_malloc_header();
 
+    // guard: reject anything outside our heap entirely
+    void *heap_end = sbrk(0);
+    if (ptr == NULL || ptr <= heap_start || ptr >= heap_end) {
+        return false;
+    }
+
     // acquire lock
     while (malloc_header->my_simple_lock)
         sleep(1);
@@ -216,3 +225,5 @@ bool an_free(void *ptr) {
     malloc_header->my_simple_lock = false;
     return true;
 }
+
+#pragma clang diagnostic pop
